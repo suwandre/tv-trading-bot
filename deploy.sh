@@ -1,4 +1,6 @@
 #!/bin/bash
+# Issues with Railway CI not building the binary correctly means that we need to debug the build process
+# and run the binary manually to confirm that it works as expected.
 echo "Starting debug process..."
 
 # Run build manually to confirm output

@@ -1,3 +1,5 @@
+mod models;
+
 use std::net::SocketAddr;
 use axum::{
     routing::get,
