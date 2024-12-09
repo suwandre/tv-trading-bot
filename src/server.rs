@@ -1,10 +1,13 @@
 mod models;
+mod api;
+mod routes;
 
 use std::net::SocketAddr;
 use axum::{
     routing::get,
     Router
 };
+use routes::trade_routes;
 
 /// Checks to see if the server is running
 async fn run_axum() -> &'static str {
@@ -13,7 +16,9 @@ async fn run_axum() -> &'static str {
 
 #[tokio::main]
 async fn main() {
-    let app = Router::new().route("/", get(run_axum));
+    let app = Router::new()
+        .route("/", get(run_axum))
+        .nest("/trade", trade_routes()); // add trade routes
 
     let port = std::env::var("PORT")
         .unwrap_or_else(|_| "3000".to_string())
