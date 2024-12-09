@@ -1,15 +1,19 @@
 #!/bin/bash
-# Print the working directory
-echo "Current working directory: $(pwd)"
+echo "Starting debug process..."
 
-# List all directories in /app
-echo "Contents of /app:"
-ls -l /app
+# Run build manually to confirm output
+echo "Running cargo build --release --target-dir /app/target"
+cargo build --release --target-dir /app/target
 
-# List all directories recursively
-echo "Complete directory tree:"
-find /app
+# Check if binary exists
+echo "Checking for binary in /app/target/release:"
+ls -l /app/target/release
 
-# Attempt to run the binary
-echo "Trying to start the app..."
-/app/target/release/tv-trading-bot
+# Attempt to execute the binary
+if [ -f /app/target/release/tv-trading-bot ]; then
+    echo "Binary found! Starting the app..."
+    /app/target/release/tv-trading-bot
+else
+    echo "Binary not found! Build step may have failed."
+    exit 1
+fi
