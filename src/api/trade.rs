@@ -13,7 +13,6 @@ pub async fn execute_trade(Json(alert): Json<TradingViewAlert>) -> (StatusCode, 
         return (
             StatusCode::UNAUTHORIZED,
             Json(ApiResponse {
-                // include both `401` and `Unauthorized` in the response
                 status: "401 Unauthorized",
                 message: "Invalid secret provided.",
                 data: None
@@ -22,15 +21,14 @@ pub async fn execute_trade(Json(alert): Json<TradingViewAlert>) -> (StatusCode, 
     }
 
     if alert.signal == TradeSignal::Buy {
-        println!("Executing buy order for {} at {}", alert.pair, alert.price);
+        println!("Executing buy order for alert {} for pair {} at {}", alert.name, alert.pair, alert.price);
     } else if alert.signal == TradeSignal::Sell {
-        println!("Executing sell order for {} at {}", alert.pair, alert.price);
+        println!("Executing sell order for alert {} for pair {} at {}", alert.name, alert.pair, alert.price);
     }
 
     (
         StatusCode::OK,
         Json(ApiResponse {
-            // include both `200` and `OK` in the response
             status: "200 OK",
             message: "Trade executed successfully.",
             data: None
