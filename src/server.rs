@@ -1,12 +1,13 @@
 mod models;
 mod api;
 mod routes;
+mod configs;
 
 use std::net::SocketAddr;
 use axum::{
-    routing::get,
-    Router
+    routing::get, Extension, Router
 };
+use configs::init_mongo;
 use routes::trade_routes;
 
 /// Checks to see if the server is running
@@ -16,9 +17,13 @@ async fn run_axum() -> &'static str {
 
 #[tokio::main]
 async fn main() {
+    let mongo_uri = std::env::var("MONGO_URI").expect("MONGO_URI must be set");
+    let mongo_client = init_mongo(&mongo_uri).await.expect("Failed to initialize MongoDB client");
+
     let app = Router::new()
         .route("/", get(run_axum))
-        .nest("/trade", trade_routes()); // add trade routes
+        .nest("/trade", trade_routes()) // add trade routes
+        .layer(Extension(mongo_client.clone())); // add MongoClient to the Axum application state
 
     let port = std::env::var("PORT")
         .unwrap_or_else(|_| "3000".to_string())
