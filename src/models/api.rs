@@ -6,7 +6,7 @@ pub struct ApiResponse<T> {
     /// includes both the status code and the status message
     pub status: &'static str,
     /// includes the message that the server wants to send back to the client
-    pub message: &'static str,
+    pub message: String,
     /// includes any optional data that the server wants to send back to the client
     pub data: Option<T>
 }
