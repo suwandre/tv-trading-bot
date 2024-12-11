@@ -12,7 +12,7 @@ pub struct TradingViewAlert {
     pub signal: TradeSignal,
     /// the pair to execute the trade on (e.g. SOL-USDT, ETH-BTC, etc.)
     pub pair: String,
-    /// the price of the pair at the time of the alert
+    /// the price of the base currency to the quote currency of the pair at the time of the alert
     /// (e.g. if the pair is 'SOL-USDT', then this price would be the price of 1 SOL in USDT)
     pub price: f64,
     /// the secret key to authenticate the trade execution request

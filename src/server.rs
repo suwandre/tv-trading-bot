@@ -7,6 +7,7 @@ use std::net::SocketAddr;
 use axum::{
     routing::get, Extension, Router
 };
+use dotenvy::dotenv;
 use configs::init_mongo;
 use routes::trade_routes;
 
@@ -17,6 +18,8 @@ async fn run_axum() -> &'static str {
 
 #[tokio::main]
 async fn main() {
+    dotenv().ok();
+
     let mongo_uri = std::env::var("MONGODB_URI").expect("MONGO_URI must be set");
     let mongo_client = init_mongo(&mongo_uri).await.expect("Failed to initialize MongoDB client");
 
