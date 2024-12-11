@@ -12,6 +12,7 @@ path = "src/server.rs"
 
 [dependencies]
 axum = "0.7.9"
+chrono = "0.4.39"
 hyper = "1.5.1"
 mongodb = "3.1.0"
 serde = { version = "1.0.215", features = ["derive"] }
