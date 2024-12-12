@@ -3,6 +3,7 @@ mod api;
 mod routes;
 mod configs;
 mod constants;
+mod tests;
 
 use std::{net::SocketAddr, sync::Arc};
 use axum::{

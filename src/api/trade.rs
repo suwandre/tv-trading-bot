@@ -1,6 +1,6 @@
 use axum::Json;
 use hyper::StatusCode;
-use mongodb::{bson::{self, doc, from_document, oid::ObjectId, Document}, options::FindOptions, results::{DeleteResult, InsertOneResult, UpdateResult}, Cursor};
+use mongodb::{bson::{doc, oid::ObjectId, Document}, results::{DeleteResult, InsertOneResult, UpdateResult}, Cursor};
 use serde_json::Value;
 
 use crate::{constants::MAX_PER_PAGE, models::{tradingview::TradingViewAlert, ActiveTrade, ApiResponse, ClosedTrade, MongoDBState, TradeSignal}};
@@ -109,21 +109,24 @@ impl MongoDBState {
 /// Executes a paper trade based on the alert received from TradingView.
 /// 
 /// A paper trade will NOT use real money and will only be used for the purpose of recording/testing trades.
+/// 
+/// Only one paper trade can exist for a given pair at a time, regardless of direction. If a new alert is received and is the opposite direction of the current trade,
+/// the current trade will be closed (a new one will NOT be opened). The next incoming alert will then determine the new trade's direction.
 pub async fn execute_paper_trade(payload: Json<Value>) -> (StatusCode, Json<ApiResponse<()>>) {
     println!("Received payload: {:?}", payload);
 
     match serde_json::from_value::<TradingViewAlert>(payload.0) {
         Ok(alert) => {
-            let expected_secret = std::env::var("TRADINGVIEW_SECRET").expect("TRADINGVIEW_SECRET must be set");
+            let expected_secret = std::env::var("TRADINGVIEW_SECRET").expect("(execute_paper_trade) TRADINGVIEW_SECRET must be set");
 
             if alert.secret != expected_secret {
-                eprintln!("Invalid secret provided.");
+                eprintln!("(execute_paper_trade) Invalid secret provided.");
 
                 return (
                     StatusCode::UNAUTHORIZED,
                     Json(ApiResponse {
                         status: "401 Unauthorized",
-                        message: "Invalid secret provided.".to_string(),
+                        message: "(execute_paper_trade) Invalid secret provided.".to_string(),
                         data: None
                     })
                 )
@@ -139,11 +142,12 @@ pub async fn execute_paper_trade(payload: Json<Value>) -> (StatusCode, Json<ApiR
                 StatusCode::OK,
                 Json(ApiResponse {
                     status: "200 OK",
-                    message: "Trade executed successfully.".to_string(),
+                    message: "(execute_paper_trade) Trade executed successfully.".to_string(),
                     data: None
                 })
             )
         }
+        
         Err(err) => {
             eprintln!("(execute_trade) Failed to deserialize payload: {}", err);
 
@@ -151,7 +155,7 @@ pub async fn execute_paper_trade(payload: Json<Value>) -> (StatusCode, Json<ApiR
                 StatusCode::UNPROCESSABLE_ENTITY,
                 Json(ApiResponse {
                     status: "422 Unprocessable Entity",
-                    message: format!("Failed to deserialize payload: {}", err),
+                    message: format!("(execute_paper_trade) Failed to deserialize payload: {}", err),
                     data: None
                 })
             )

@@ -36,12 +36,6 @@ pub struct ActiveTrade {
     pub stop_loss: Option<f64>,
     /// the fees paid for opening the trade (in USDT value).
     pub execution_fees: f64,
-    /// the fee paid for holding the trade over several hours or days (in USDT value).
-    /// 
-    /// at the start of trades, all `funding_fees` will start at 0 and accumulate after 1, 4 or 8 hours depending on the exchange.
-    /// 
-    /// for spot trades, this will be kept at 0.
-    pub funding_fees: f64,
 }
 
 /// An instance of a trade that has been successfully closed.
@@ -103,7 +97,7 @@ pub enum TradeSignal {
 
 /// Used to determine the kind of trade (paper or live, spot or futures).
 #[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "camelCase")]
 pub enum TradeKind {
     PaperSpot,
     PaperFutures,
