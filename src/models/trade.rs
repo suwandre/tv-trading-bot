@@ -1,11 +1,10 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-/// An instance of a executed trade, including the relevant details.
-/// 
-/// NOTE: Some fields will be null/empty upon initialization and will be filled once a trade is closed.
+/// A trade instance that is generated upon executing a trade.
 #[derive(Debug, Deserialize, Serialize)]
-pub struct Trade<'a> {
+#[serde(rename_all = "camelCase")]
+pub struct ActiveTrade<'a> {
     /// the unique database ID of the trade.
     #[serde(rename = "_id")]
     pub id: &'a str,
@@ -13,10 +12,11 @@ pub struct Trade<'a> {
     pub pair: &'a str,
     /// the direction of the trade (long or short)
     pub direction: TradeDirection,
-    /// the kind of trade (paper or live)
+    /// the kind of trade (paper or live, spot or futures)
     pub kind: TradeKind,
-    /// the status of the trade (active or closed)
-    pub status: TradeStatus,
+    /// the timestamp of when the trade was opened.
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub open_timestamp: DateTime<Utc>,
     /// quantity of the base currency of the pair being traded.
     /// 
     /// (e.g. if SOL-USDT, then this would be the quantity of SOL)
@@ -25,25 +25,71 @@ pub struct Trade<'a> {
     /// 
     /// (e.g. if the pair is 'SOL-USDT', then this price would be the price of 1 SOL in USDT)
     pub entry_price: f64,
-    /// the price of the base currency to the quote currency of the pair at the time of closing the trade.
-    pub exit_price: Option<f64>,
     /// the leverage used for the trade.
+    /// 
+    /// if spot trading, this will be set to 1x.
+    pub leverage: TradeLeverage,
+    /// if a take profit (TP) price is set, it will be stored here.
+    pub take_profit: Option<f64>,
+    /// if a stop loss (SL) price is set, it will be stored here.
+    pub stop_loss: Option<f64>,
+    /// the fees paid for opening the trade (in USDT value).
+    pub execution_fees: f64,
+    /// the fee paid for holding the trade over several hours or days (in USDT value).
+    /// 
+    /// at the start of trades, all `funding_fees` will start at 0 and accumulate after 1, 4 or 8 hours depending on the exchange.
+    /// 
+    /// for spot trades, this will be kept at 0.
+    pub funding_fees: f64,
+}
+
+/// An instance of a trade that has been successfully closed.
+/// 
+/// This will include all the relevant details of the trade, including the profit/loss, fees, etc.
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClosedTrade<'a> {
+    /// the unique database ID of the trade.
+    #[serde(rename = "_id")]
+    pub id: &'a str,
+    /// the pair that the trade was executed on (e.g. SOL-USDT, ETH-BTC, etc.)
+    pub pair: &'a str,
+    /// the direction of the trade (long or short)
+    pub direction: TradeDirection,
+    /// the kind of trade (paper or live, spot or futures)
+    pub kind: TradeKind,
+    /// quantity of the base currency of the pair that was traded.
+    /// 
+    /// (e.g. if SOL-USDT, then this would be the quantity of SOL)
+    pub quantity: f64,
+    /// the price of the base currency to the quote currency of the pair when the trade was opened/executed.
+    /// 
+    /// (e.g. if the pair is 'SOL-USDT', then this price would be the price of 1 SOL in USDT)
+    pub entry_price: f64,
+    /// the price of the base currency to the quote currency of the pair at the time of closing the trade.
+    pub exit_price: f64,
+    /// the leverage used for the trade.
+    /// 
+    /// if spot trading, this will be set to 1x.
     pub leverage: TradeLeverage,
     /// the timestamp of when the trade was opened.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub open_timestamp: DateTime<Utc>,
     /// the timestamp of when the trade was closed.
-    #[serde(with = "chrono::serde::ts_seconds_option")]
-    pub close_timestamp: Option<DateTime<Utc>>,
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub close_timestamp: DateTime<Utc>,
     /// the profit or loss of the trade (in USDT value).
     /// 
     /// this will already take the base profit/loss and all fees into account.
-    pub pnl: Option<f64>,
+    pub pnl: f64,
     /// the fees paid for closing and opening the trade (in USDT value).
     pub execution_fees: f64,
     /// the funding fees paid for holding the trade over several hours or days (in USDT value).
-    pub funding_fees: Option<f64>,
-
+    /// 
+    /// at the start of trades, all `funding_fees` will start at 0 and accumulate after 1, 4 or 8 hours depending on the exchange.
+    /// 
+    /// for spot trades, this will be kept at 0.
+    pub funding_fees: f64,
 }
 
 /// Used to determine a buy or sell signal.
@@ -54,12 +100,14 @@ pub enum TradeSignal {
     Sell
 }
 
-/// Used to determine the kind of trade (paper or live).
+/// Used to determine the kind of trade (paper or live, spot or futures).
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "lowercase")]
 pub enum TradeKind {
-    Paper,
-    Live
+    PaperSpot,
+    PaperFutures,
+    LiveSpot,
+    LiveFutures,
 }
 
 /// Used to determine the direction of a trade.
