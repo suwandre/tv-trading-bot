@@ -2,6 +2,7 @@ mod models;
 mod api;
 mod routes;
 mod configs;
+mod constants;
 
 use std::{net::SocketAddr, sync::Arc};
 use axum::{

@@ -3,20 +3,15 @@ use mongodb::{bson::doc, options::ClientOptions, Client};
 
 use crate::models::{ActiveTrade, ClosedTrade, MongoDBState};
 
-impl<'a> MongoDBState<'a> {
-    /// Creates a new `MongoDBState` instance, initializing the necessary collections.
-    /// 
-    /// This method takes an `Arc<Client>` to ensure the MongoDB client can be shared
-    /// safely across multiple threads. It initializes the database and its collections,
-    /// allowing the app to perform CRUD operations on them.
+impl MongoDBState {
+    /// Initializes a new MongoDBState instance with the provided client and required collections.
     pub fn new(client: Arc<Client>) -> Self {
-        let db = client.database("main");
-        let active_trade_collection = db.collection::<ActiveTrade<'a>>("ActiveTrades");
-        let closed_trade_collection = db.collection::<ClosedTrade<'a>>("ClosedTrades");
+        let active_trade_collection = client.database("main").collection::<ActiveTrade>("ActiveTrades");
+        let closed_trade_collection = client.database("main").collection::<ClosedTrade>("ClosedTrades");
 
         Self {
             active_trade_collection,
-            closed_trade_collection,
+            closed_trade_collection
         }
     }
 }

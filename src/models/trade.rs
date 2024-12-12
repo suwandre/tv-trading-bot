@@ -5,12 +5,12 @@ use serde::{Deserialize, Serialize};
 /// A trade instance that is generated upon executing a trade.
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ActiveTrade<'a> {
+pub struct ActiveTrade {
     /// the unique database ID of the trade.
     #[serde(rename = "_id")]
     pub id: ObjectId,
     /// the pair that the trade was executed on (e.g. SOL-USDT, ETH-BTC, etc.)
-    pub pair: &'a str,
+    pub pair: String,
     /// the direction of the trade (long or short)
     pub direction: TradeDirection,
     /// the kind of trade (paper or live, spot or futures)
@@ -49,12 +49,12 @@ pub struct ActiveTrade<'a> {
 /// This will include all the relevant details of the trade, including the profit/loss, fees, etc.
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ClosedTrade<'a> {
+pub struct ClosedTrade {
     /// the unique database ID of the trade.
     #[serde(rename = "_id")]
     pub id: ObjectId,
     /// the pair that the trade was executed on (e.g. SOL-USDT, ETH-BTC, etc.)
-    pub pair: &'a str,
+    pub pair: String,
     /// the direction of the trade (long or short)
     pub direction: TradeDirection,
     /// the kind of trade (paper or live, spot or futures)
