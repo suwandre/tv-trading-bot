@@ -26,14 +26,14 @@ async fn main() {
     let mongo_uri = std::env::var("MONGODB_URI").expect("MONGO_URI must be set");
     let mongo_client = init_mongo(&mongo_uri).await.expect("Failed to initialize MongoDB client");
     // initialize a mongo state (with the required collections) with the initialized client
-    let mongo_state = MongoDBState::new(mongo_client.clone());
+    // wrap in an Arc again because the struct itself isn't wrapped in an Arc even if the cloned client is
+    let mongo_state = Arc::new(MongoDBState::new(mongo_client.clone()));
 
     let app = Router::new()
         .route("/", get(run_axum))
         // add trade routes
-        .nest("/trade", trade_routes())
-        // wrap `mongo_state` in an Arc again because the struct itself isn't wrapped in an Arc even if the cloned client is
-        .layer(Extension(Arc::new(mongo_state)));
+        .nest("/trade", trade_routes(mongo_state.clone()))
+        .layer(Extension(mongo_state));
 
     let port = std::env::var("PORT")
         .unwrap_or_else(|_| "3000".to_string())

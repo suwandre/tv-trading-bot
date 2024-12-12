@@ -1,4 +1,6 @@
-use axum::Json;
+use std::sync::Arc;
+
+use axum::{Extension, Json};
 use hyper::StatusCode;
 use mongodb::{bson::{doc, oid::ObjectId, Document}, results::{DeleteResult, InsertOneResult, UpdateResult}, Cursor};
 use serde_json::Value;
@@ -112,7 +114,10 @@ impl MongoDBState {
 /// 
 /// Only one paper trade can exist for a given pair at a time, regardless of direction. If a new alert is received and is the opposite direction of the current trade,
 /// the current trade will be closed (a new one will NOT be opened). The next incoming alert will then determine the new trade's direction.
-pub async fn execute_paper_trade(payload: Json<Value>) -> (StatusCode, Json<ApiResponse<()>>) {
+pub async fn execute_paper_trade(
+    Extension(mongo_state): Extension<Arc<MongoDBState>>, 
+    payload: Json<Value>
+) -> (StatusCode, Json<ApiResponse<()>>) {
     println!("Received payload: {:?}", payload);
 
     match serde_json::from_value::<TradingViewAlert>(payload.0) {
@@ -132,11 +137,11 @@ pub async fn execute_paper_trade(payload: Json<Value>) -> (StatusCode, Json<ApiR
                 )
             }
 
-            if alert.signal == TradeSignal::Buy {
-                println!("Executing buy order for alert {} for pair {} at {}", alert.name, alert.pair, alert.price);
-            } else if alert.signal == TradeSignal::Sell {
-                println!("Executing sell order for alert {} for pair {} at {}", alert.name, alert.pair, alert.price);
-            }
+            // // a check needs to be made to ensure that an active trade with the same pair doesn't already exist
+            // // if it does exist:
+            // // 1. if the direction is the same, do nothing (i.e. ignore the alert).
+            // // 2. if the direction is the opposite, close the current trade.
+            // if let Ok(Some(existing_trade)) = mongo
 
             (
                 StatusCode::OK,
