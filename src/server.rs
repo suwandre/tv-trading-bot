@@ -3,12 +3,13 @@ mod api;
 mod routes;
 mod configs;
 
-use std::net::SocketAddr;
+use std::{net::SocketAddr, sync::Arc};
 use axum::{
     routing::get, Extension, Router
 };
 use dotenvy::dotenv;
 use configs::init_mongo;
+use models::MongoDBState;
 use routes::trade_routes;
 
 /// Checks to see if the server is running
@@ -21,14 +22,16 @@ async fn main() {
     dotenv().ok();
 
     let mongo_uri = std::env::var("MONGODB_URI").expect("MONGO_URI must be set");
-
-    println!("Connecting to MongoDB... {}", mongo_uri);
     let mongo_client = init_mongo(&mongo_uri).await.expect("Failed to initialize MongoDB client");
+    // initialize a mongo state (with the required collections) with the initialized client
+    let mongo_state = MongoDBState::new(mongo_client.clone());
 
     let app = Router::new()
         .route("/", get(run_axum))
-        .nest("/trade", trade_routes()) // add trade routes
-        .layer(Extension(mongo_client.clone())); // add MongoClient to the Axum application state
+        // add trade routes
+        .nest("/trade", trade_routes())
+        // wrap `mongo_state` in an Arc again because the struct itself isn't wrapped in an Arc even if the cloned client is
+        .layer(Extension(Arc::new(mongo_state)));
 
     let port = std::env::var("PORT")
         .unwrap_or_else(|_| "3000".to_string())
