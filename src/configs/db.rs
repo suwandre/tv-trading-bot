@@ -1,5 +1,25 @@
 use std::sync::Arc;
-use mongodb::{bson::doc, options::ClientOptions, Client};
+use mongodb::{bson::doc, options::ClientOptions, Client, Collection};
+
+use crate::models::{ActiveTrade, ClosedTrade, MongoDBState};
+
+impl MongoDBState<'_> {
+    /// Creates a new `MongoDBState` instance, initializing the necessary collections.
+    /// 
+    /// This method takes an `Arc<Client>` to ensure the MongoDB client can be shared
+    /// safely across multiple threads. It initializes the database and its collections,
+    /// allowing the app to perform CRUD operations on them.
+    pub fn new(client: Arc<Client>) -> Self {
+        let db = client.database("main");
+        let active_trade_collection = db.collection::<ActiveTrade>("ActiveTrades");
+        let closed_trade_collection = db.collection::<ClosedTrade>("ClosedTrades");
+
+        Self {
+            active_trade_collection,
+            closed_trade_collection,
+        }
+    }
+}
 
 /// Initializes a MongoDB client, returning `Arc<Client>` for sharing across threads.
 pub async fn init_mongo(uri: &str) -> mongodb::error::Result<Arc<Client>> {

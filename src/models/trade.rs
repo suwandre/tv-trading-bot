@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use mongodb::bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
 
 /// A trade instance that is generated upon executing a trade.
@@ -7,7 +8,7 @@ use serde::{Deserialize, Serialize};
 pub struct ActiveTrade<'a> {
     /// the unique database ID of the trade.
     #[serde(rename = "_id")]
-    pub id: &'a str,
+    pub id: ObjectId,
     /// the pair that the trade was executed on (e.g. SOL-USDT, ETH-BTC, etc.)
     pub pair: &'a str,
     /// the direction of the trade (long or short)
@@ -51,7 +52,7 @@ pub struct ActiveTrade<'a> {
 pub struct ClosedTrade<'a> {
     /// the unique database ID of the trade.
     #[serde(rename = "_id")]
-    pub id: &'a str,
+    pub id: ObjectId,
     /// the pair that the trade was executed on (e.g. SOL-USDT, ETH-BTC, etc.)
     pub pair: &'a str,
     /// the direction of the trade (long or short)

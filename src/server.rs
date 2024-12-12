@@ -21,6 +21,8 @@ async fn main() {
     dotenv().ok();
 
     let mongo_uri = std::env::var("MONGODB_URI").expect("MONGO_URI must be set");
+
+    println!("Connecting to MongoDB... {}", mongo_uri);
     let mongo_client = init_mongo(&mongo_uri).await.expect("Failed to initialize MongoDB client");
 
     let app = Router::new()
