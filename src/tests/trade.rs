@@ -22,14 +22,14 @@ pub async fn add_active_trade() {
         id: ObjectId::new(),
         pair: "SOLUSDT".to_string(),
         direction: TradeDirection::Long,
-        kind: TradeKind::LiveFutures,
+        kind: TradeKind::Live,
         open_timestamp: Utc::now(),
         quantity: 100.0,
         entry_price: 231.4,
         leverage: TradeLeverage::One,
         take_profit: Some(240.0),
         stop_loss: Some(225.0),
-        execution_fees: 10.36
+        liquidation_price: 10.0,
     };
 
     match state.add_active_trade(sample_trade).await {
