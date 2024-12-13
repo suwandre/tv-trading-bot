@@ -6,7 +6,7 @@ use hyper::StatusCode;
 use mongodb::{bson::{doc, oid::ObjectId, to_bson, Document}, results::{DeleteResult, InsertOneResult, UpdateResult}, Cursor};
 use serde_json::Value;
 
-use crate::{api::calc_final_execution_fees, constants::{EXECUTION_FEE_PERCENTAGE, MAX_PER_PAGE}, models::{tradingview::TradingViewAlert, ActiveTrade, ApiResponse, ClosedTrade, MongoDBState, TradeKind, TradeSignal}};
+use crate::{api::{calc_final_execution_fees, calc_final_funding_fees}, constants::{EXECUTION_FEE_PERCENTAGE, MAX_PER_PAGE}, models::{tradingview::TradingViewAlert, ActiveTrade, ApiResponse, ClosedTrade, MongoDBState, TradeKind, TradeSignal}};
 
 /// CRUD operations for active and closed trades in the database.
 impl MongoDBState {
@@ -185,9 +185,16 @@ pub async fn execute_paper_trade(
             //             close_timestamp: Utc::now(),
             //             pnl: 0.0,
             //             // get the opening fee and add the closing fee
-            //             execution_fees: calc_final_execution_fees(existing_trade.quantity, existing_trade.entry_price),
-            //             // for paper trades, the funding fee is 0.01% per 8 hours.
-            //             funding_fees: 0.0 // calculate this later
+            //             execution_fees: calc_final_execution_fees(
+            //                 existing_trade.quantity,
+            //                 existing_trade.entry_price
+            //             ),
+            //             // funding fee is simplified and estimated based on entry and exit prices
+            //             funding_fees: calc_final_funding_fees(
+            //                 existing_trade.open_timestamp,
+            //                 Utc::now(),
+            //                 (existing_trade.quantity * existing_trade.entry_price + existing_trade.quantity * alert.price) / 2.0
+            //             )
             //         };
             //     }
             // }

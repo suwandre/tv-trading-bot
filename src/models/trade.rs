@@ -67,6 +67,8 @@ pub struct ClosedTrade {
     /// 
     /// if spot trading, this will be set to 1x.
     pub leverage: TradeLeverage,
+    /// the liquidation price of the trade.
+    pub liquidation_price: f64,
     /// the timestamp of when the trade was opened.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub open_timestamp: DateTime<Utc>,
@@ -77,6 +79,10 @@ pub struct ClosedTrade {
     /// 
     /// this will already take the base profit/loss and all fees into account.
     pub pnl: f64,
+    /// the return on equity (ROE) of the trade (in percentage format).
+    /// 
+    /// this takes leverage into account.
+    pub roe: f64,
     /// the fees paid for closing and opening the trade (in USDT value). used primarily in paper trades only, unless the exchange
     /// that the trade was executed in provides this value (for live trades).
     pub execution_fees: f64,

@@ -2,9 +2,42 @@ use chrono::{DateTime, Duration, Timelike, Utc};
 
 use crate::{constants::{EXECUTION_FEE_PERCENTAGE, FUNDING_FEE_8H_PERCENTAGE, FUNDING_FEE_HOURS, MAINTENANCE_MARGIN}, models::TradeDirection};
 
+/// Calculate the Profit and Loss (PnL) for a trade.
+pub fn calc_pnl(
+    entry_price: f64,
+    exit_price: f64,
+    quantity: f64,
+    execution_fees: f64,
+    funding_fees: f64,
+    direction: TradeDirection
+) -> f64 {
+    let raw_pnl = if direction == TradeDirection::Long {
+        (exit_price - entry_price) * quantity
+    } else {
+        (entry_price - exit_price) * quantity
+    };
+
+    raw_pnl - execution_fees - funding_fees
+}
+
+/// Calculates the Return on Equity (ROE) for a trade.
+pub fn calc_roe(
+    pnl: f64,
+    entry_price: f64,
+    quantity: f64,
+    leverage: f64
+) -> f64 {
+    // calculate margin (equity used)
+    let notional_value = entry_price * quantity;
+    let margin = notional_value / leverage;
+
+    // return ROE as percentage
+    (pnl / margin) * 100.0
+}
+
 /// Calculate the liquidation price of a trade based on the entry price, leverage, and direction. Used for both long and short trades.
 /// 
-/// Only used in paper trading to simulate real liquidation prices.
+/// Only used primarily in paper trading to simulate real liquidation prices.
 /// 
 /// Maintenance margin is also taken into account.
 pub fn calc_liquidation_price(
