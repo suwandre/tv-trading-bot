@@ -150,47 +150,47 @@ pub async fn execute_paper_trade(
                 )
             }
 
-            // a check needs to be made to ensure that an active trade with the same pair and kind doesn't already exist
-            // if it does exist:
-            // 1. if the direction is the same, do nothing (i.e. ignore the alert).
-            // 2. if the direction is the opposite, close the current trade.
-            if let Ok(Some(existing_trade)) = mongo_state.fetch_active_trade_by_pk(alert.pair, TradeKind::Paper).await {
-                println!("(execute_paper_trade) Existing trade found: {:?}", existing_trade);
+            // // a check needs to be made to ensure that an active trade with the same pair and kind doesn't already exist
+            // // if it does exist:
+            // // 1. if the direction is the same, do nothing (i.e. ignore the alert).
+            // // 2. if the direction is the opposite, close the current trade.
+            // if let Ok(Some(existing_trade)) = mongo_state.fetch_active_trade_by_pk(alert.pair, TradeKind::Paper).await {
+            //     println!("(execute_paper_trade) Existing trade found: {:?}", existing_trade);
 
-                if existing_trade.direction == alert.signal.into() {
-                    println!("(execute_paper_trade) Alert signal matches existing trade direction. Ignoring alert.");
+            //     if existing_trade.direction == alert.signal.into() {
+            //         println!("(execute_paper_trade) Alert signal matches existing trade direction. Ignoring alert.");
 
-                    return (
-                        StatusCode::OK,
-                        Json(ApiResponse {
-                            status: "200 OK",
-                            message: "(execute_paper_trade) Alert signal matches existing trade direction. Ignoring alert.".to_string(),
-                            data: None
-                        })
-                    )
-                } else {
-                    println!("(execute_paper_trade) Alert signal is opposite of existing trade direction. Closing existing trade.");
+            //         return (
+            //             StatusCode::OK,
+            //             Json(ApiResponse {
+            //                 status: "200 OK",
+            //                 message: "(execute_paper_trade) Alert signal matches existing trade direction. Ignoring alert.".to_string(),
+            //                 data: None
+            //             })
+            //         )
+            //     } else {
+            //         println!("(execute_paper_trade) Alert signal is opposite of existing trade direction. Closing existing trade.");
 
-                    // close the existing trade and add it to the closed trades collection
-                    let closed_trade = ClosedTrade {
-                        id: existing_trade.id,
-                        pair: existing_trade.pair,
-                        direction: existing_trade.direction,
-                        kind: existing_trade.kind,
-                        quantity: existing_trade.quantity,
-                        entry_price: existing_trade.entry_price,
-                        exit_price: alert.price,
-                        leverage: existing_trade.leverage,
-                        open_timestamp: existing_trade.open_timestamp,
-                        close_timestamp: Utc::now(),
-                        pnl: 0.0,
-                        // get the opening fee and add the closing fee
-                        execution_fees: calc_final_execution_fees(existing_trade.quantity, existing_trade.entry_price),
-                        // for paper trades, the funding fee is 0.01% per 8 hours.
-                        funding_fees: 0.0 // calculate this later
-                    };
-                }
-            }
+            //         // close the existing trade and add it to the closed trades collection
+            //         let closed_trade = ClosedTrade {
+            //             id: existing_trade.id,
+            //             pair: existing_trade.pair,
+            //             direction: existing_trade.direction,
+            //             kind: existing_trade.kind,
+            //             quantity: existing_trade.quantity,
+            //             entry_price: existing_trade.entry_price,
+            //             exit_price: alert.price,
+            //             leverage: existing_trade.leverage,
+            //             open_timestamp: existing_trade.open_timestamp,
+            //             close_timestamp: Utc::now(),
+            //             pnl: 0.0,
+            //             // get the opening fee and add the closing fee
+            //             execution_fees: calc_final_execution_fees(existing_trade.quantity, existing_trade.entry_price),
+            //             // for paper trades, the funding fee is 0.01% per 8 hours.
+            //             funding_fees: 0.0 // calculate this later
+            //         };
+            //     }
+            // }
 
             (
                 StatusCode::OK,
