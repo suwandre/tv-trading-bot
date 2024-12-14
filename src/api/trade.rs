@@ -154,7 +154,7 @@ pub async fn execute_paper_trade(
             // a check needs to be made to ensure that an active trade with the same pair, kind AND alert name doesn't already exist
             // if it does exist:
             // 1. if the direction is the same, do nothing (i.e. ignore the alert).
-            // 2. if the direction is the opposite, close the current trade.
+            // 2. if the direction is the opposite, close the current trade and open a new one in this direction.
             // if it doesn't exist, proceed to open a new trade.
             if let Ok(Some(existing_trade)) = mongo_state.fetch_active_trade_by_apk(&alert.name, &alert.pair, &TradeKind::Paper).await {
                 println!("(execute_paper_trade) Existing trade found: {:?}", existing_trade);
@@ -171,7 +171,7 @@ pub async fn execute_paper_trade(
                         })
                     )
                 } else {
-                    println!("(execute_paper_trade) Alert signal is opposite of existing trade direction. Closing existing trade.");
+                    println!("(execute_paper_trade) Alert signal is opposite of existing trade direction. Closing existing trade and opening a new one.");
                     
                     let execution_fees = calc_final_execution_fees(
                         existing_trade.quantity,
@@ -203,7 +203,7 @@ pub async fn execute_paper_trade(
                     // close the existing trade and add it to the closed trades collection
                     let closed_trade = ClosedTrade {
                         id: existing_trade.id,
-                        alert_name: alert.name,
+                        alert_name: alert.name.clone(),
                         pair: existing_trade.pair,
                         direction: existing_trade.direction,
                         kind: existing_trade.kind,
@@ -229,18 +229,51 @@ pub async fn execute_paper_trade(
                             // delete the existing trade from the active trades collection
                             match mongo_state.delete_active_trade(existing_trade.id).await {
                                 Ok(_) => {
-                                    println!("(execute_paper_trade) Closed existing trade and added to closed trades collection.");
+                                    println!("(execute_paper_trade) Closed existing trade and added to closed trades collection. Now creating a new trade.");
 
-                                    // at this point, the trade has been closed and added to the closed trades collection.
-                                    // the trade has also been deleted from the active trades collection.
-                                    return (
-                                        StatusCode::OK,
-                                        Json(ApiResponse {
-                                            status: "200 OK",
-                                            message: "(execute_paper_trade) Closed existing trade and added to closed trades collection.".to_string(),
-                                            data: None
-                                        })
-                                    )
+                                    // create a new trade based on the alert on the opposite direction
+                                    let new_active_trade = ActiveTrade {
+                                        id: ObjectId::new(),
+                                        alert_name: alert.name,
+                                        pair: alert.pair,
+                                        direction: alert.signal.into(),
+                                        kind: TradeKind::Paper,
+                                        open_timestamp: Utc::now(),
+                                        quantity: (DEFAULT_NOTIONAL_VALUE / alert.price * 100.0).round() / 100.0, // rounded to 2 dp
+                                        entry_price: alert.price,
+                                        leverage: DEFAULT_LEVERAGE,
+                                        liquidation_price: calc_liquidation_price(alert.price, DEFAULT_LEVERAGE.into(), &alert.signal.into()),
+                                        take_profit: alert.take_profit,
+                                        stop_loss: alert.stop_loss,
+                                    };
+
+                                    // add the new trade to the active trades collection
+                                    match mongo_state.add_active_trade(new_active_trade).await {
+                                        Ok(_) => {
+                                            println!("(execute_paper_trade) Opened new trade successfully.");
+
+                                            return (
+                                                StatusCode::OK,
+                                                Json(ApiResponse {
+                                                    status: "200 OK",
+                                                    message: "(execute_paper_trade) Closed existing trade and added to closed trades collection. Also opened new trade successfully.".to_string(),
+                                                    data: None
+                                                })
+                                            )
+                                        }
+                                        Err(err) => {
+                                            eprintln!("(execute_paper_trade) Failed to open new trade: {}", err);
+
+                                            return (
+                                                StatusCode::INTERNAL_SERVER_ERROR,
+                                                Json(ApiResponse {
+                                                    status: "500 Internal Server Error",
+                                                    message: format!("(execute_paper_trade) Failed to open new trade: {}", err),
+                                                    data: None
+                                                })
+                                            )
+                                        }
+                                    }
                                 }
                                 Err(err) => {
                                     eprintln!("(execute_paper_trade) Failed to delete existing trade: {}", err);
