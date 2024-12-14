@@ -20,6 +20,7 @@ pub async fn add_active_trade() {
 
     let sample_trade = ActiveTrade {
         id: ObjectId::new(),
+        alert_name: "Sample Alert".to_string(),
         pair: "SOLUSDT".to_string(),
         direction: TradeDirection::Long,
         kind: TradeKind::Live,

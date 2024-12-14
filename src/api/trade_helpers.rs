@@ -9,9 +9,9 @@ pub fn calc_pnl(
     quantity: f64,
     execution_fees: f64,
     funding_fees: f64,
-    direction: TradeDirection
+    direction: &TradeDirection
 ) -> f64 {
-    let raw_pnl = if direction == TradeDirection::Long {
+    let raw_pnl = if *direction == TradeDirection::Long {
         (exit_price - entry_price) * quantity
     } else {
         (entry_price - exit_price) * quantity
@@ -43,9 +43,9 @@ pub fn calc_roe(
 pub fn calc_liquidation_price(
     entry_price: f64,
     leverage: f64,
-    direction: TradeDirection
+    direction: &TradeDirection
 ) -> f64 {
-    if direction == TradeDirection::Long {
+    if *direction == TradeDirection::Long {
         // liq price = entry price * (1 - (1 / leverage) + (maintenance margin [in ratio format] / leverage))
         entry_price * (1.0 - (1.0 / leverage) + ((MAINTENANCE_MARGIN / 100.0) / leverage)) 
     } else {

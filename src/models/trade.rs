@@ -9,6 +9,8 @@ pub struct ActiveTrade {
     /// the unique database ID of the trade.
     #[serde(rename = "_id")]
     pub id: ObjectId,
+    /// the alert name that triggered the trade.
+    pub alert_name: String,
     /// the pair that the trade was executed on (e.g. SOL-USDT, ETH-BTC, etc.)
     pub pair: String,
     /// the direction of the trade (long or short)
@@ -47,6 +49,8 @@ pub struct ClosedTrade {
     /// the unique database ID of the trade.
     #[serde(rename = "_id")]
     pub id: ObjectId,
+    /// the alert name that triggered the trade.
+    pub alert_name: String,
     /// the pair that the trade was executed on (e.g. SOL-USDT, ETH-BTC, etc.)
     pub pair: String,
     /// the direction of the trade (long or short)
@@ -111,7 +115,7 @@ impl From<TradeSignal> for TradeDirection {
 }
 
 /// Used to determine a buy or sell signal.
-#[derive(Deserialize, Debug, PartialEq)]
+#[derive(Deserialize, Debug, PartialEq, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
 pub enum TradeSignal {
     Buy,
@@ -143,7 +147,7 @@ pub enum TradeStatus {
 }
 
 /// Used to determine the leverage of a trade.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub enum TradeLeverage {
     #[serde(rename = "1x")]
     One,
@@ -157,3 +161,15 @@ pub enum TradeLeverage {
     Ten
 }
 
+impl Into<f64> for TradeLeverage {
+    /// Converts a `TradeLeverage` enum into a `f64` value.
+    fn into(self) -> f64 {
+        match self {
+            TradeLeverage::One => 1.0,
+            TradeLeverage::Two => 2.0,
+            TradeLeverage::Three => 3.0,
+            TradeLeverage::Five => 5.0,
+            TradeLeverage::Ten => 10.0
+        }
+    }
+}

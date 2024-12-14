@@ -1,3 +1,5 @@
+use crate::models::TradeLeverage;
+
 
 /// Fee for opening and closing a trade (in percentage format). Used in paper trades only to simulate real trading fees.
 pub const EXECUTION_FEE_PERCENTAGE: f64 = 0.05;
@@ -17,3 +19,21 @@ pub const FUNDING_FEE_HOURS: [u8; 3] = [0, 8, 16];
 /// The margin required (in percentage) of the notional value to keep the trade open and prevent liquidation. 
 /// Used in paper trades only to simulate real margin requirements.
 pub const MAINTENANCE_MARGIN: f64 = 1.0;
+
+/// The default total value of a trade upon entry (in USDT). Used in paper trades only to simulate real trades.
+/// 
+/// Therefore, the quantity of the base currency will be calculated based on this value and the entry price.
+pub const DEFAULT_NOTIONAL_VALUE: f64 = 1000.0;
+
+/// The default leverage used for a trade. Used in paper trades only to simulate real trades.
+pub const DEFAULT_LEVERAGE: TradeLeverage = TradeLeverage::Three;
+
+/// The default take profit percentage to set for a trade. Used in paper trades only to simulate real trades.
+///
+/// This is only used if the alert does not provide a take profit price.
+pub const DEFAULT_TAKE_PROFIT_PERCENTAGE: f64 = 5.0;
+
+/// The default stop loss percentage to set for a trade. Used in paper trades only to simulate real trades.
+/// 
+/// This is only used if the alert does not provide a stop loss price.
+pub const DEFAULT_STOP_LOSS_PERCENTAGE: f64 = 2.0;

@@ -6,7 +6,7 @@ use hyper::StatusCode;
 use mongodb::{bson::{doc, oid::ObjectId, to_bson, Document}, results::{DeleteResult, InsertOneResult, UpdateResult}, Cursor};
 use serde_json::Value;
 
-use crate::{api::{calc_final_execution_fees, calc_final_funding_fees}, constants::{EXECUTION_FEE_PERCENTAGE, MAX_PER_PAGE}, models::{tradingview::TradingViewAlert, ActiveTrade, ApiResponse, ClosedTrade, MongoDBState, TradeKind, TradeSignal}};
+use crate::{api::{calc_final_execution_fees, calc_final_funding_fees, calc_liquidation_price, calc_pnl, calc_roe}, constants::{DEFAULT_LEVERAGE, DEFAULT_NOTIONAL_VALUE, MAX_PER_PAGE}, models::{tradingview::TradingViewAlert, ActiveTrade, ApiResponse, ClosedTrade, MongoDBState, TradeKind, TradeLeverage, TradeSignal}};
 
 /// CRUD operations for active and closed trades in the database.
 impl MongoDBState {
@@ -49,16 +49,17 @@ impl MongoDBState {
         self.active_trade_collection.find_one(doc! { "_id": id }).await
     }
 
-    /// Fetches an active trade from the database based on the provided pair and kind (PK).
-    pub async fn fetch_active_trade_by_pk(
+    /// Fetches an active trade from the database based on the provided alert name, pair and kind (APK).
+    pub async fn fetch_active_trade_by_apk(
         &self, 
-        pair: String, 
-        kind: TradeKind,
+        alert_name: &String,
+        pair: &String, 
+        kind: &TradeKind,
     ) -> Result<Option<ActiveTrade>, mongodb::error::Error> {
         // convert TradeKind to Bson
         let kind_bson = to_bson(&kind).map_err(|e| mongodb::error::Error::from(e))?;
 
-        self.active_trade_collection.find_one(doc! { "pair": pair, "kind": kind_bson }).await
+        self.active_trade_collection.find_one(doc! { "alertName": alert_name, "pair": pair, "kind": kind_bson }).await
     }
 
     /// Updates an active trade in the database based on the provided ID.
@@ -150,63 +151,171 @@ pub async fn execute_paper_trade(
                 )
             }
 
-            // // a check needs to be made to ensure that an active trade with the same pair and kind doesn't already exist
-            // // if it does exist:
-            // // 1. if the direction is the same, do nothing (i.e. ignore the alert).
-            // // 2. if the direction is the opposite, close the current trade.
-            // if let Ok(Some(existing_trade)) = mongo_state.fetch_active_trade_by_pk(alert.pair, TradeKind::Paper).await {
-            //     println!("(execute_paper_trade) Existing trade found: {:?}", existing_trade);
+            // a check needs to be made to ensure that an active trade with the same pair, kind AND alert name doesn't already exist
+            // if it does exist:
+            // 1. if the direction is the same, do nothing (i.e. ignore the alert).
+            // 2. if the direction is the opposite, close the current trade.
+            // if it doesn't exist, proceed to open a new trade.
+            if let Ok(Some(existing_trade)) = mongo_state.fetch_active_trade_by_apk(&alert.name, &alert.pair, &TradeKind::Paper).await {
+                println!("(execute_paper_trade) Existing trade found: {:?}", existing_trade);
 
-            //     if existing_trade.direction == alert.signal.into() {
-            //         println!("(execute_paper_trade) Alert signal matches existing trade direction. Ignoring alert.");
+                if existing_trade.direction == alert.signal.into() {
+                    println!("(execute_paper_trade) Alert signal matches existing trade direction. Ignoring alert.");
 
-            //         return (
-            //             StatusCode::OK,
-            //             Json(ApiResponse {
-            //                 status: "200 OK",
-            //                 message: "(execute_paper_trade) Alert signal matches existing trade direction. Ignoring alert.".to_string(),
-            //                 data: None
-            //             })
-            //         )
-            //     } else {
-            //         println!("(execute_paper_trade) Alert signal is opposite of existing trade direction. Closing existing trade.");
+                    return (
+                        StatusCode::OK,
+                        Json(ApiResponse {
+                            status: "200 OK",
+                            message: "(execute_paper_trade) Alert signal matches existing trade direction. Ignoring alert.".to_string(),
+                            data: None
+                        })
+                    )
+                } else {
+                    println!("(execute_paper_trade) Alert signal is opposite of existing trade direction. Closing existing trade.");
+                    
+                    let execution_fees = calc_final_execution_fees(
+                        existing_trade.quantity,
+                        existing_trade.entry_price
+                    );
 
-            //         // close the existing trade and add it to the closed trades collection
-            //         let closed_trade = ClosedTrade {
-            //             id: existing_trade.id,
-            //             pair: existing_trade.pair,
-            //             direction: existing_trade.direction,
-            //             kind: existing_trade.kind,
-            //             quantity: existing_trade.quantity,
-            //             entry_price: existing_trade.entry_price,
-            //             exit_price: alert.price,
-            //             leverage: existing_trade.leverage,
-            //             open_timestamp: existing_trade.open_timestamp,
-            //             close_timestamp: Utc::now(),
-            //             pnl: 0.0,
-            //             // get the opening fee and add the closing fee
-            //             execution_fees: calc_final_execution_fees(
-            //                 existing_trade.quantity,
-            //                 existing_trade.entry_price
-            //             ),
-            //             // funding fee is simplified and estimated based on entry and exit prices
-            //             funding_fees: calc_final_funding_fees(
-            //                 existing_trade.open_timestamp,
-            //                 Utc::now(),
-            //                 (existing_trade.quantity * existing_trade.entry_price + existing_trade.quantity * alert.price) / 2.0
-            //             )
-            //         };
-            //     }
-            // }
+                    let funding_fees = calc_final_funding_fees(
+                        existing_trade.open_timestamp,
+                        Utc::now(),
+                        ((existing_trade.quantity * existing_trade.entry_price) + (existing_trade.quantity * alert.price)) / 2.0
+                    );
 
-            (
-                StatusCode::OK,
-                Json(ApiResponse {
-                    status: "200 OK",
-                    message: "(execute_paper_trade) Trade executed successfully.".to_string(),
-                    data: None
-                })
-            )
+                    let pnl = calc_pnl(
+                        existing_trade.entry_price,
+                        alert.price,
+                        existing_trade.quantity,
+                        execution_fees,
+                        funding_fees,
+                        &existing_trade.direction,
+                    );
+                    
+                    let roe = calc_roe(
+                        pnl,
+                        existing_trade.entry_price,
+                        existing_trade.quantity,
+                        existing_trade.leverage.into()
+                    );
+
+                    // close the existing trade and add it to the closed trades collection
+                    let closed_trade = ClosedTrade {
+                        id: existing_trade.id,
+                        alert_name: alert.name,
+                        pair: existing_trade.pair,
+                        direction: existing_trade.direction,
+                        kind: existing_trade.kind,
+                        quantity: existing_trade.quantity,
+                        entry_price: existing_trade.entry_price,
+                        exit_price: alert.price,
+                        leverage: existing_trade.leverage,
+                        liquidation_price: existing_trade.liquidation_price,
+                        open_timestamp: existing_trade.open_timestamp,
+                        close_timestamp: Utc::now(),
+                        pnl,
+                        roe,
+                        // get the opening fee and add the closing fee
+                        execution_fees,
+                        // funding fee is simplified and estimated based on entry and exit prices
+                        funding_fees,
+                    };
+
+                    // add the closed trade to the database. since this is a paper trade, no need to 
+                    // call any API to close the trade on the exchange.
+                    match mongo_state.add_closed_trade(closed_trade).await {
+                        Ok(_) => {
+                            // delete the existing trade from the active trades collection
+                            match mongo_state.delete_active_trade(existing_trade.id).await {
+                                Ok(_) => {
+                                    println!("(execute_paper_trade) Closed existing trade and added to closed trades collection.");
+
+                                    // at this point, the trade has been closed and added to the closed trades collection.
+                                    // the trade has also been deleted from the active trades collection.
+                                    return (
+                                        StatusCode::OK,
+                                        Json(ApiResponse {
+                                            status: "200 OK",
+                                            message: "(execute_paper_trade) Closed existing trade and added to closed trades collection.".to_string(),
+                                            data: None
+                                        })
+                                    )
+                                }
+                                Err(err) => {
+                                    eprintln!("(execute_paper_trade) Failed to delete existing trade: {}", err);
+
+                                    return (
+                                        StatusCode::INTERNAL_SERVER_ERROR,
+                                        Json(ApiResponse {
+                                            status: "500 Internal Server Error",
+                                            message: format!("(execute_paper_trade) Failed to delete existing trade: {}", err),
+                                            data: None
+                                        })
+                                    )
+                                }
+                            }
+                        }
+                        Err(err) => {
+                            eprintln!("(execute_paper_trade) Failed to add closed trade: {}", err);
+
+                            return (
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                                Json(ApiResponse {
+                                    status: "500 Internal Server Error",
+                                    message: format!("(execute_paper_trade) Failed to add closed trade: {}", err),
+                                    data: None
+                                })
+                            )
+                        }
+                    }
+                }
+            // if no existing trade is found, proceed to open a new paper trade
+            } else {
+                println!("(execute_paper_trade) No existing trade found. Proceeding to open new trade.");
+
+                let active_trade = ActiveTrade {
+                    id: ObjectId::new(),
+                    alert_name: alert.name,
+                    pair: alert.pair,
+                    direction: alert.signal.into(),
+                    kind: TradeKind::Paper,
+                    open_timestamp: Utc::now(),
+                    quantity: (DEFAULT_NOTIONAL_VALUE / alert.price * 100.0).round() / 100.0, // rounded to 2 dp
+                    entry_price: alert.price,
+                    leverage: DEFAULT_LEVERAGE,
+                    liquidation_price: calc_liquidation_price(alert.price, DEFAULT_LEVERAGE.into(), &alert.signal.into()),
+                    take_profit: alert.take_profit,
+                    stop_loss: alert.stop_loss,
+                };
+
+                match mongo_state.add_active_trade(active_trade).await {
+                    Ok(_) => {
+                        println!("(execute_paper_trade) Opened new trade successfully.");
+
+                        return (
+                            StatusCode::OK,
+                            Json(ApiResponse {
+                                status: "200 OK",
+                                message: "(execute_paper_trade) Opened new trade successfully.".to_string(),
+                                data: None
+                            })
+                        )
+                    }
+                    Err(err) => {
+                        eprintln!("(execute_paper_trade) Failed to open new trade: {}", err);
+
+                        return (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            Json(ApiResponse {
+                                status: "500 Internal Server Error",
+                                message: format!("(execute_paper_trade) Failed to open new trade: {}", err),
+                                data: None
+                            })
+                        )
+                    }
+                }
+            }
         }
         
         Err(err) => {
