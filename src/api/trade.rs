@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::{Arc, Mutex}};
 
 use axum::{Extension, Json};
 use chrono::Utc;
@@ -7,6 +7,9 @@ use mongodb::{bson::{doc, oid::ObjectId, to_bson, Document}, results::{DeleteRes
 use serde_json::Value;
 
 use crate::{api::{calc_final_execution_fees, calc_final_funding_fees, calc_liquidation_price, calc_pnl, calc_roe}, constants::{DEFAULT_LEVERAGE, DEFAULT_NOTIONAL_VALUE, MAX_PER_PAGE}, models::{tradingview::TradingViewAlert, ActiveTrade, ApiResponse, ClosedTrade, MongoDBState, TradeKind, TradeLeverage, TradeSignal}};
+
+/// A thread-safe map of active trades in memory.
+pub type ActiveTradesMap = Arc<Mutex<HashMap<ObjectId, ActiveTrade>>>;
 
 /// CRUD operations for active and closed trades in the database.
 impl MongoDBState {

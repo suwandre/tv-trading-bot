@@ -47,7 +47,6 @@ async fn main() {
         }
     });
 
-
     let app = Router::new()
         .route("/", get(run_axum))
         // add trade routes
