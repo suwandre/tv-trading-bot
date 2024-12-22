@@ -6,7 +6,7 @@ use hyper::StatusCode;
 use mongodb::{bson::{doc, oid::ObjectId, to_bson, Document}, results::{DeleteResult, InsertOneResult, UpdateResult}, Cursor};
 use serde_json::Value;
 
-use crate::{api::{calc_final_execution_fees, calc_final_funding_fees, calc_liquidation_price, calc_pnl, calc_roe}, constants::{DEFAULT_LEVERAGE, DEFAULT_NOTIONAL_VALUE, MAX_PER_PAGE}, models::{tradingview::TradingViewAlert, ActiveTrade, ApiResponse, ClosedTrade, MongoDBState, TradeKind, TradeLeverage, TradeSignal}};
+use crate::{api::{calc_final_execution_fees, calc_final_funding_fees, calc_liquidation_price, calc_pnl, calc_roe}, constants::{DEFAULT_LEVERAGE, DEFAULT_NOTIONAL_VALUE, MAX_PER_PAGE}, models::{tradingview::TradingViewAlert, ActiveTrade, ApiResponse, AppState, ClosedTrade, MongoDBState, TradeKind, TradeLeverage, TradeSignal}};
 
 /// A thread-safe map of active trades in memory.
 pub type ActiveTradesMap = Arc<Mutex<HashMap<ObjectId, ActiveTrade>>>;
@@ -367,4 +367,33 @@ pub async fn execute_paper_trade(
             )
         }
     }
+}
+
+
+/// Closes an active paper trade if either:
+/// 1) The take profit price is hit.
+/// 2) The stop loss price is hit.
+/// 3) The liquidation price is hit.
+/// - Removes from in-memory
+/// - Moves to closed trades collection in DB
+pub async fn close_paper_trade(
+    app_state: &AppState, 
+    trade_id: &ObjectId,
+    exit_price: f64
+) {
+    // remove from in-memory so we don't close it twice
+    {
+        let mut map = app_state.active_trades.lock().unwrap();
+        map.remove(trade_id);
+    }
+
+    // 2. Insert into "closed trades" + remove from "active trades" in DB
+    //    Reuse your existing logic (calc fees, PnL, etc.)
+    //    or replicate your existing "closing" code.
+    //    For example:
+    //        let closed_trade = ClosedTrade { ... };
+    //        app_state.mongo_state.add_closed_trade(closed_trade).await?;
+    //        app_state.mongo_state.delete_active_trade(trade.id).await?;
+
+    println!("Trade {} closed at price {}", trade_id, exit_price);
 }

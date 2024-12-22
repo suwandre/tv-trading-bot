@@ -1,6 +1,6 @@
 use chrono::{DateTime, Duration, Timelike, Utc};
 
-use crate::{constants::{EXECUTION_FEE_PERCENTAGE, FUNDING_FEE_8H_PERCENTAGE, FUNDING_FEE_HOURS, MAINTENANCE_MARGIN}, models::TradeDirection};
+use crate::{constants::{EXECUTION_FEE_PERCENTAGE, FUNDING_FEE_8H_PERCENTAGE, FUNDING_FEE_HOURS, MAINTENANCE_MARGIN}, models::{ActiveTrade, TradeDirection}};
 
 /// Calculate the Profit and Loss (PnL) for a trade.
 pub fn calc_pnl(
@@ -117,4 +117,42 @@ pub fn get_next_funding_time(timestamp: DateTime<Utc>) -> DateTime<Utc> {
 
     // this point should never be reached if funding hours are correctly configured
     panic!("(get_next_funding_time) No valid funding times configured");
+}
+
+/// Checks if the trade’s liquidation, stop loss or take profit is triggered by `current_price`.
+pub fn is_trigger_hit(trade: &ActiveTrade, current_price: f64) -> bool {
+    use crate::models::TradeDirection::*;
+    match trade.direction {
+        Long => {
+            if current_price <= trade.liquidation_price {
+                return true;
+            }
+            if let Some(sl) = trade.stop_loss {
+                if current_price <= sl {
+                    return true;
+                }
+            }
+            if let Some(tp) = trade.take_profit {
+                if current_price >= tp {
+                    return true;
+                }
+            }
+        }
+        Short => {
+            if current_price >= trade.liquidation_price {
+                return true;
+            }
+            if let Some(sl) = trade.stop_loss {
+                if current_price >= sl {
+                    return true;
+                }
+            }
+            if let Some(tp) = trade.take_profit {
+                if current_price <= tp {
+                    return true;
+                }
+            }
+        }
+    }
+    false
 }

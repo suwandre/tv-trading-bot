@@ -3,7 +3,7 @@ use mongodb::bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
 
 /// A trade instance that is generated upon executing a trade.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ActiveTrade {
     /// the unique database ID of the trade.
@@ -123,7 +123,7 @@ pub enum TradeSignal {
 }
 
 /// Used to determine the kind of trade (paper or live).
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum TradeKind {
     Paper,
@@ -131,7 +131,7 @@ pub enum TradeKind {
 }
 
 /// Used to determine the direction of a trade.
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum TradeDirection {
     Long,
