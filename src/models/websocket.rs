@@ -3,10 +3,7 @@ use serde::Deserialize;
 /// Represents a ticker update from the Binance WebSocket.
 /// 
 /// Renaming is required because the data obtained from the WebSocket update is abbreviated.
-/// 
-/// NOTE: Some fields that would've normally been converted to `f64`s or `u64`s may be kept as `String`
-/// if they are not used for calculations in the application.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct BinanceTickerUpdate {
     /// Event type (e.g., "24hrTicker").
     #[serde(rename = "e")]
@@ -31,7 +28,7 @@ pub struct BinanceTickerUpdate {
     pub prev_close_price: String,
     /// Current closing price.
     #[serde(rename = "c")]
-    pub current_close_price: f64,
+    pub current_close_price: String,
     /// Quantity of the last trade executed.
     #[serde(rename = "Q")]
     pub last_trade_quantity: String,

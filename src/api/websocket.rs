@@ -28,8 +28,11 @@ pub async fn start_price_listener(app_state: Arc<AppState>) {
     let app_state_for_rx = app_state.clone();
     tokio::spawn(async move {
         while let Some(ticker_update) = rx.recv().await {
+            println!("Received ticker update: {:?}", ticker_update);
+            
             let symbol = &ticker_update.symbol;
-            let price = ticker_update.current_close_price;
+            let price_str = &ticker_update.current_close_price;
+            let price = price_str.parse::<f64>().unwrap_or(0.0);
 
             // check open trades for this symbol
             let trades_to_check: Vec<ActiveTrade> = {
@@ -84,8 +87,9 @@ async fn connect_and_subscribe_to_binance(tx: mpsc::Sender<BinanceTickerUpdate>)
         match msg {
             Ok(Message::Text(text)) => {
                 if let Ok(ticker_update) = serde_json::from_str::<BinanceTickerUpdate>(&text) {
+                    let ticker_update_clone = ticker_update.clone();
                     // Forward to our channel
-                    if tx.send(ticker_update).await.is_err() {
+                    if tx.send(ticker_update_clone).await.is_err() {
                         eprintln!("(connect_and_subscribe_to_binance) Receiver dropped, stopping WebSocket connection.");
                         break;
                     }
