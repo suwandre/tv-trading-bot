@@ -1,5 +1,14 @@
 use serde::Deserialize;
 
+/// The commands that are sent to the writer task.
+/// 
+/// Used to subscribe and unsubscribe from the WebSocket to fetch/unfetch tickers.
+#[derive(Debug)]
+pub enum WsCommand {
+    Subscribe(String),
+    Unsubscribe(String),
+}
+
 /// Represents a ticker update from Binance WebSocket.
 /// 
 /// Renaming is required because the data obtained from the WebSocket update is abbreviated.

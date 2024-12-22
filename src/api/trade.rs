@@ -6,7 +6,7 @@ use hyper::StatusCode;
 use mongodb::{bson::{doc, oid::ObjectId, to_bson, Document}, results::{DeleteResult, InsertOneResult, UpdateResult}, Cursor};
 use serde_json::Value;
 
-use crate::{api::{calc_final_execution_fees, calc_final_funding_fees, calc_liquidation_price, calc_pnl, calc_roe}, constants::{DEFAULT_LEVERAGE, DEFAULT_NOTIONAL_VALUE, MAX_PER_PAGE}, models::{tradingview::TradingViewAlert, ActiveTrade, ApiResponse, AppState, ClosedTrade, MongoDBState, TradeKind, TradeLeverage, TradeSignal}};
+use crate::{api::{calc_final_execution_fees, calc_final_funding_fees, calc_liquidation_price, calc_pnl, calc_roe}, constants::{ACCEPTED_SYMBOLS, DEFAULT_LEVERAGE, DEFAULT_NOTIONAL_VALUE, MAX_PER_PAGE}, models::{tradingview::TradingViewAlert, ActiveTrade, ApiResponse, AppState, ClosedTrade, MongoDBState, TradeKind, TradeLeverage, TradeSignal}};
 
 /// A thread-safe map of active trades in memory.
 pub type ActiveTradesMap = Arc<Mutex<HashMap<ObjectId, ActiveTrade>>>;
@@ -151,6 +151,18 @@ pub async fn execute_paper_trade(
                         status: "401 Unauthorized",
                         message: "(execute_paper_trade) Invalid secret provided.".to_string(),
                         data: None
+                    })
+                )
+            }
+
+            // check if the symbol is accepted
+            if !ACCEPTED_SYMBOLS.contains(&alert.pair.to_uppercase().as_str()) {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(ApiResponse {
+                        status: "400 Bad Request",
+                        message: format!("(execute_paper_trade) Symbol {} not accepted", alert.pair),
+                        data: None,
                     })
                 )
             }

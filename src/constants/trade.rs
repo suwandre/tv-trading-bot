@@ -1,5 +1,14 @@
 use crate::models::TradeLeverage;
 
+/// Accepted symbols to trade on and receive WebSocket subscriptions for.
+/// 
+/// Prevents unwanted symbols from being traded on or subscribed to.
+pub const ACCEPTED_SYMBOLS: &[&str] = &[
+    "BTCUSDT",
+    "ETHUSDT",
+    "BNBUSDT",
+    "SOLUSDT",
+];
 
 /// Fee for opening and closing a trade (in percentage format). Used in paper trades only to simulate real trading fees.
 pub const EXECUTION_FEE_PERCENTAGE: f64 = 0.05;

@@ -2,10 +2,11 @@ use std::sync::Arc;
 
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
 use futures_util::{StreamExt, SinkExt};
-use tokio::sync::mpsc;
+use tokio::sync::mpsc::{self, Receiver};
 use serde_json::Value;
 
-use crate::models::{ActiveTrade, AppState, BinanceTickerUpdate};
+use crate::constants::ACCEPTED_SYMBOLS;
+use crate::models::{ActiveTrade, AppState, BinanceTickerUpdate, WsCommand};
 
 use crate::api::{close_paper_trade, is_trigger_hit};
 
@@ -53,7 +54,6 @@ pub async fn start_price_listener(app_state: Arc<AppState>) {
     });
 }
 
-
 /// Connects to Binance WebSocket and subscribes to one or multiple tickers.
 /// Sends each incoming `ticker` event to the provided MPSC sender.
 async fn connect_and_subscribe_to_binance(tx: mpsc::Sender<BinanceTickerUpdate>) {
@@ -66,12 +66,16 @@ async fn connect_and_subscribe_to_binance(tx: mpsc::Sender<BinanceTickerUpdate>)
 
     let (mut write, mut read) = ws_stream.split();
 
+    // create the subscription list from the accepted symbols
+    let params: Vec<String> = ACCEPTED_SYMBOLS
+        .iter()
+        .map(|symbol| format!("{}@ticker", symbol.to_lowercase()))
+        .collect();
+
     // Subscribe message
     let subscription_message = serde_json::json!({
         "method": "SUBSCRIBE",
-        "params": [
-            "btcusdt@ticker"
-        ],
+        "params": params,
         "id": 1
     });
 

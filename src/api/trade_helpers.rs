@@ -121,9 +121,8 @@ pub fn get_next_funding_time(timestamp: DateTime<Utc>) -> DateTime<Utc> {
 
 /// Checks if the trade’s liquidation, stop loss or take profit is triggered by `current_price`.
 pub fn is_trigger_hit(trade: &ActiveTrade, current_price: f64) -> bool {
-    use crate::models::TradeDirection::*;
     match trade.direction {
-        Long => {
+        TradeDirection::Long => {
             if current_price <= trade.liquidation_price {
                 return true;
             }
@@ -138,7 +137,7 @@ pub fn is_trigger_hit(trade: &ActiveTrade, current_price: f64) -> bool {
                 }
             }
         }
-        Short => {
+        TradeDirection::Short => {
             if current_price >= trade.liquidation_price {
                 return true;
             }

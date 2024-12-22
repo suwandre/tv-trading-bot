@@ -8,7 +8,6 @@ use super::MongoDBState;
 pub struct AppState {
     /// The MongoDB data-access object.
     pub mongo_state: Arc<MongoDBState>,
-
     /// All active trades in memory (for real-time checks).
     pub active_trades: ActiveTradesMap,
 }
