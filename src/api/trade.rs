@@ -235,6 +235,12 @@ pub async fn execute_paper_trade(
                                 Ok(_) => {
                                     println!("(execute_paper_trade) Closed existing trade and added to closed trades collection. Now creating a new trade.");
 
+                                    // removes the trade from the ActiveTradesMap
+                                    {
+                                        let mut map = app_state.active_trades.lock().unwrap();
+                                        map.remove(&existing_trade.id);
+                                    }
+
                                     // create a new trade based on the alert on the opposite direction
                                     let new_active_trade = ActiveTrade {
                                         id: ObjectId::new(),
