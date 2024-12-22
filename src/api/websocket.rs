@@ -28,8 +28,8 @@ pub async fn start_price_listener(app_state: Arc<AppState>) {
     let app_state_for_rx = app_state.clone();
     tokio::spawn(async move {
         while let Some(ticker_update) = rx.recv().await {
-            println!("Received ticker update: {:?}", ticker_update);
-            
+            println!("(start_price_listener) Received ticker update: {:?}", ticker_update);
+
             let symbol = &ticker_update.symbol;
             let price_str = &ticker_update.current_close_price;
             let price = price_str.parse::<f64>().unwrap_or(0.0);
@@ -60,9 +60,9 @@ async fn connect_and_subscribe_to_binance(tx: mpsc::Sender<BinanceTickerUpdate>)
     let binance_ws_url = "wss://stream.binance.com:9443/ws";
     let (ws_stream, _) = connect_async(binance_ws_url)
         .await
-        .expect("Failed to connect to Binance WebSocket");
+        .expect("(connect_and_subscribe_to_binance) Failed to connect to Binance WebSocket");
 
-    println!("Connected to Binance WebSocket: {}", binance_ws_url);
+    println!("(connect_and_subscribe_to_binance) Connected to Binance WebSocket: {}", binance_ws_url);
 
     let (mut write, mut read) = ws_stream.split();
 
@@ -78,18 +78,17 @@ async fn connect_and_subscribe_to_binance(tx: mpsc::Sender<BinanceTickerUpdate>)
     write
         .send(Message::Text(subscription_message.to_string().into()))
         .await
-        .expect("Failed to send subscription message");
+        .expect("(connect_and_subscribe_to_binance) Failed to send subscription message");
 
-    println!("Subscribed to BTCUSDT ticker");
+    println!("(connect_and_subscribe_to_binance) Subscribed to BTCUSDT ticker");
 
     // Continuously read messages
     while let Some(msg) = read.next().await {
         match msg {
             Ok(Message::Text(text)) => {
                 if let Ok(ticker_update) = serde_json::from_str::<BinanceTickerUpdate>(&text) {
-                    let ticker_update_clone = ticker_update.clone();
                     // Forward to our channel
-                    if tx.send(ticker_update_clone).await.is_err() {
+                    if tx.send(ticker_update).await.is_err() {
                         eprintln!("(connect_and_subscribe_to_binance) Receiver dropped, stopping WebSocket connection.");
                         break;
                     }
@@ -97,7 +96,7 @@ async fn connect_and_subscribe_to_binance(tx: mpsc::Sender<BinanceTickerUpdate>)
             }
             Ok(_) => { /* ignore non-text messages */ }
             Err(e) => {
-                eprintln!("WebSocket error: {}", e);
+                eprintln!("(connect_and_subscribe_to_binance) WebSocket error: {}", e);
                 break;
             }
         }

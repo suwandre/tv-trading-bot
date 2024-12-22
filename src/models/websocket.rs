@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-/// Represents a ticker update from the Binance WebSocket.
+/// Represents a ticker update from Binance WebSocket.
 /// 
 /// Renaming is required because the data obtained from the WebSocket update is abbreviated.
 #[derive(Debug, Deserialize, Clone)]

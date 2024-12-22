@@ -133,6 +133,7 @@ impl MongoDBState {
 /// the current trade will be closed (a new one will NOT be opened). The next incoming alert will then determine the new trade's direction.
 pub async fn execute_paper_trade(
     Extension(mongo_state): Extension<Arc<MongoDBState>>, 
+    Extension(app_state): Extension<Arc<AppState>>,
     payload: Json<Value>
 ) -> (StatusCode, Json<ApiResponse<()>>) {
     println!("Received payload: {:?}", payload);
@@ -251,9 +252,15 @@ pub async fn execute_paper_trade(
                                     };
 
                                     // add the new trade to the active trades collection
-                                    match mongo_state.add_active_trade(new_active_trade).await {
+                                    match mongo_state.add_active_trade(new_active_trade.clone()).await {
                                         Ok(_) => {
                                             println!("(execute_paper_trade) Opened new trade successfully.");
+
+                                            // insert the trade into the in-memory store
+                                            {
+                                                let mut map = app_state.active_trades.lock().unwrap();
+                                                map.insert(new_active_trade.id, new_active_trade);
+                                            }
 
                                             return (
                                                 StatusCode::OK,
@@ -325,9 +332,15 @@ pub async fn execute_paper_trade(
                     stop_loss: alert.stop_loss,
                 };
 
-                match mongo_state.add_active_trade(active_trade).await {
+                match mongo_state.add_active_trade(active_trade.clone()).await {
                     Ok(_) => {
                         println!("(execute_paper_trade) Opened new trade successfully.");
+
+                        // insert the trade into the in-memory store
+                        {
+                            let mut map = app_state.active_trades.lock().unwrap();
+                            map.insert(active_trade.id, active_trade);
+                        }
 
                         return (
                             StatusCode::OK,
